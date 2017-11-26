@@ -10,45 +10,26 @@
 File fxdata;
 CRGB leds[NUM_LEDS];
 Mode mode;
+int brightness = 0;
 
 String GetName(bool filename);
 bool ChangeMode();
-void AllOn(int);
-void Wave(int);
+void Snake();
+int NewApple();
 
 void setup()
 {
-  FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
+	FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
 
-  AllOn(CRGB::Black);
+	randomSeed(analogRead(1));
 
-  Wave(CRGB::Red);
-  Wave(CRGB::Green);
-  Wave(CRGB::Blue);
+	Snake();
 
-  AllOn(CRGB::White);
+	pinMode(10, OUTPUT);
+	digitalWrite(10, HIGH);
 
-  delay(2000);
-
-  pinMode(10, OUTPUT);
-  digitalWrite(10, HIGH);
-
-  if (!SD.begin(10))
-  {
-    //Serial.println("SD init: ✗");
-    return;
-  }
-  //Serial.println("SD init: ✓");
-
-  mode = Off;
-
-  fxdata = SD.open(GetName(true));
-  if (fxdata)
-  {
-    fxdata.close();
-  }
-
-  delay(100);
+	if (!SD.begin(10))
+		return;
 }
 
 void loop()
@@ -62,52 +43,92 @@ void loop()
 		if (ChangeMode())
 			break;
 
+		if (brightness < 255)
+		{
+			brightness++;
+			FastLED.setBrightness(brightness);
+		}
+		
 		fxdata.readBytes(reinterpret_cast<char*>(leds), NUM_LEDS * 3);
 		FastLED.show();
-		delay(20);
+		FastLED.delay(20);
 	}
 
 	fxdata.close();
 }
 
-void AllOn(int color)
+void Snake()
 {
-	for (auto i = 0; i <= NUM_LEDS; i++)
+	auto size = 2;
+	auto snakeSpeed = 50;
+	auto apple = NewApple();
+	auto collects = 0;
+	auto maxCollects = 10;
+	auto curPos = 0;
+	auto endSnake = 0;
+
+	while(curPos != size)
 	{
-		leds[i] = color;
+		leds[curPos] = CRGB::White;
+		FastLED.show();
+		FastLED.delay(snakeSpeed);
+		curPos++;
 	}
-	FastLED.show();
+	
+	while (collects != maxCollects)
+	{
+		if (curPos == NUM_LEDS)
+			curPos = 0;
+
+		endSnake = curPos - size;
+		if (endSnake < 0)
+			endSnake = NUM_LEDS + endSnake;
+
+		leds[curPos] = CRGB::White;
+		leds[endSnake] = CRGB::Black;
+		FastLED.show();
+		FastLED.delay(snakeSpeed);
+
+		curPos++;
+
+		if (curPos == apple)
+		{
+			collects++;
+			size++;
+			apple = NewApple();
+		}
+	}
+
+	while (endSnake < NUM_LEDS - 1)
+	{
+		endSnake = curPos - size;
+
+		if(curPos < NUM_LEDS - 1)
+			leds[curPos] = CRGB::White;
+
+		leds[endSnake] = CRGB::Black;
+
+		curPos++;
+
+		FastLED.show();
+		FastLED.delay(snakeSpeed);
+	}
 }
 
-void Wave(int color)
+int NewApple()
 {
-	for (auto i = 0; i <= NUM_LEDS; i++)
+	int newApple;
+
+	while (true)
 	{
-		if (i < 3)
-		{
-			leds[i] = color;
-			FastLED.show();
-		}
-		else
-		{
-			leds[i] = color;
-			leds[i - 3] = CRGB::Black;
-			FastLED.show();
-		}
+		newApple = random(0, NUM_LEDS + 1);
 
-		if (i == NUM_LEDS - 3)
+		if (!leds[newApple])
 		{
-			leds[i - 2] = CRGB::Black;
+			leds[newApple] = CRGB::Red;
 			FastLED.show();
-			delay(50);
-			leds[i - 1] = CRGB::Black;
-			FastLED.show();
-			delay(50);
-			leds[i] = CRGB::Black;
-			FastLED.show();
+			return newApple;
 		}
-
-		delay(50);
 	}
 }
 
@@ -170,8 +191,6 @@ bool ChangeMode()
 		return false;
 
 	mode = newMode;
-	//Serial.print("new mode: ");
-	//Serial.println(GetName(false));
 
 	return true;
 }
