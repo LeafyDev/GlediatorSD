@@ -21,7 +21,7 @@ void setup()
 {
 	FastLED.addLeds<NEOPIXEL, DATA_PIN>(leds, NUM_LEDS);
 
-	randomSeed(analogRead(1));
+	//randomSeed(analogRead(1));
 
 	Snake();
 
@@ -121,7 +121,7 @@ int NewApple()
 
 	while (true)
 	{
-		newApple = random(0, NUM_LEDS + 1);
+		newApple = random(0, NUM_LEDS);
 
 		if (!leds[newApple])
 		{
